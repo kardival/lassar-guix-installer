@@ -1,4 +1,4 @@
-# custom-guix-installer
+# lassar-guix-installer
 
 This repository automatically generates custom installation images for the GNU Guix system. It is based on a similar project [here](https://github.com/SystemCrafters/guix-installer) and adds some additional configurations and packages and ~~fixes an annoyance during installation in the mentioned project as described in [this issue report](https://github.com/SystemCrafters/guix-installer/issues/7)~~ that part doesn't seem to work yet.
 
