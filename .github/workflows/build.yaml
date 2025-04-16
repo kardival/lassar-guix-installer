@@ -1,1 +1,61 @@
+name: Build Guix Installer
 
+on:
+  push:
+    branches:
+      - main
+
+  schedule:
+    # build every week
+    - cron: "0 0 */7 * *"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+      - name: Install Guix
+        uses: PromyLOPh/guix-install-action@v1
+        with:
+          pullAfterInstall: false
+
+      - name: Build ISO
+        run: |
+          # Build the image
+          SUBSTITUTE_URLS='https://ci.guix.gnu.org https://bordeaux.guix.gnu.org https://substitutes.nonguix.org'
+          wget https://substitutes.nonguix.org/signing-key.pub
+          sudo -E /var/guix/profiles/per-user/root/current-guix/bin/guix archive --authorize < ./signing-key.pub
+          /var/guix/profiles/per-user/root/current-guix/bin/guix pull -C ./guix/channels.scm --substitute-urls="$SUBSTITUTE_URLS" --fallback
+          hash guix
+          image=$(/var/guix/profiles/per-user/root/current-guix/bin/guix time-machine --substitute-urls="$SUBSTITUTE_URLS" --fallback -C ./guix/channels.scm -- system --substitute-urls="$SUBSTITUTE_URLS" --fallback image -t iso9660 './guix/installer.scm')
+          # Copy the image to the local folder with a better name
+          export RELEASE_TAG=$(date +"%Y%m%d%H%M")
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          cp $image ./guix-installer-$RELEASE_TAG.iso
+
+      - name: Prepare Release Notes
+        run: |
+          echo $'This installer image was prepared with the following configuration:\r\n\r\n```\r\n' >> release-notes.md
+          cat ./guix/installer.scm >> release-notes.md
+          echo $'\r\n```\r\n\r\nAnd the following channels:\r\n\r\n```\r\n' >> release-notes.md
+          cat ./guix/channels.scm >> release-notes.md
+          echo $'\r\n```\r\n\r\nmd5sum of the ISO:\r\n\r\n```\r\n' >> release-notes.md
+          md5sum ./lassar-guix-installer-*.iso >> release-notes.md
+          echo $'\r\n```\r\n\r\nls -lh output of the ISO:\r\n\r\n```\r\n' >> release-notes.md
+          ls -lh ./lassar-guix-installer-*.iso >> release-notes.md
+          echo $'\r\n```' >> release-notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Lassar Guix Installer - ${{ env.RELEASE_TAG }}
+          tag_name: v${{ env.RELEASE_TAG }}
+          body_path: release-notes.md
+          files: lassar-guix-installer-${{ env.RELEASE_TAG }}.iso
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: kardival/lassar-guix-installer
