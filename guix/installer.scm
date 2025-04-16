@@ -18,7 +18,7 @@
   (kernel-arguments '("quiet" "net.ifnames=0"))
   (firmware (list linux-firmware))
 
-  (label (string-append "Lassar Guix installation (nonfree firmware) "
+  (label (string-append "Lassar Guix Installer (nonfree firmware) "
                         (or (getenv "GUIX_DISPLAYED_VERSION")
                             (package-version guix))))
 
